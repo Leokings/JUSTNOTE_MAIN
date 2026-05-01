@@ -14,7 +14,11 @@ const JustNoteApp = () => {
   const [notes, setNotes] = useState<Note[]>(() => {
     try {
       const saved = localStorage.getItem("justnote:notes");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Filter out any blobs that were saved to cache before we added the filter
+        return parsed.filter((n: Note) => !n.id.startsWith('@'));
+      }
     } catch {}
     return [];
   });
@@ -50,15 +54,26 @@ const JustNoteApp = () => {
         const blobs = await shelbyClient.coordination.getAccountBlobs({ account: walletAddr });
         if (cancelled) return;
         if (blobs && blobs.length > 0) {
-          const onChainNotes: Note[] = blobs.map((b: any) => ({
-            id: b.name || b.blob_name || uid(),
-            title: b.name || b.blob_name || "On-chain note",
-            content: "",
-            tags: ["web3"],
-            folder: "Personal",
-            updatedAt: b.uploadTimestamp ? Number(b.uploadTimestamp) * 1000 : Date.now(),
-            encrypted: false,
-          }));
+          const onChainNotes: Note[] = [];
+          
+          blobs.forEach((b: any) => {
+            // The indexer returns the full name (e.g. @0x123/n_abc) in b.name 
+            // and the suffix (e.g. n_abc) in b.blobNameSuffix.
+            const suffix = b.blobNameSuffix || (b.name ? b.name.split("/").pop() : null) || b.blob_name?.split("/").pop();
+            
+            // Ignore blobs from other apps/tutorials that don't have a valid suffix
+            if (!suffix || suffix.startsWith('@')) return;
+
+            onChainNotes.push({
+              id: suffix,
+              title: "Loading...",
+              content: "",
+              tags: ["web3"],
+              folder: "Personal",
+              updatedAt: b.creationMicros ? Number(b.creationMicros) / 1000 : (b.uploadTimestamp ? Number(b.uploadTimestamp) * 1000 : Date.now()),
+              encrypted: false,
+            });
+          });
           setNotes((prev) => {
             const existingIds = new Set(prev.map((n) => n.id));
             const newOnes = onChainNotes.filter((n) => !existingIds.has(n.id));
