@@ -81,10 +81,13 @@ const JustNoteApp = () => {
       if (!walletAddr) return;
       try {
         const shelbyClient = await getShelbyClient();
-        const rpcBaseUrl = (shelbyClient as any).rpc?.baseUrl || "https://api.shelbynet.shelby.xyz/shelby";
-        const res = await fetch(`${rpcBaseUrl}/v1/blobs/${walletAddr}/${noteId}`);
-        if (res.ok) {
-          let text = await res.text();
+        const blobData = await shelbyClient.rpc.getBlob({
+          account: walletAddr,
+          blobName: noteId
+        });
+        
+        if (blobData) {
+          let text = new TextDecoder().decode(blobData);
           let isEncrypted = false;
           if (text.startsWith("[ENCRYPTED] ")) {
             // UTF-8 safe Base64 decode
