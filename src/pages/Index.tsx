@@ -173,7 +173,7 @@ const JustNoteApp = () => {
     }
   };
 
-  const saveNoteOnChain = async (n: Note) => {
+  const saveNoteOnChain = async (n: Note, expiryDays: number = 30) => {
     if (!walletAddr || !signAndSubmitTransaction) {
       return toast.error("Connect wallet first!");
     }
@@ -195,7 +195,7 @@ const JustNoteApp = () => {
       const provider = await sdk.createDefaultErasureCodingProvider();
       const commitments = await sdk.generateCommitments(provider, dataBytes);
 
-      const expirationMicros = BigInt(Date.now() + 30 * 24 * 3600 * 1000) * 1000n;
+      const expirationMicros = BigInt(Date.now() + expiryDays * 24 * 3600 * 1000) * 1000n;
 
       const payload = sdk.ShelbyBlobClient.createRegisterBlobPayload({
         account: walletAddr,
@@ -290,7 +290,7 @@ const JustNoteApp = () => {
             walletAddr={walletAddr}
             onChange={updateActive}
             onDelete={deleteActive}
-            onSaveOnChain={walletAddr ? () => saveNoteOnChain(active) : undefined}
+            onSaveOnChain={walletAddr ? (days) => saveNoteOnChain(active, days) : undefined}
           />
         ) : (
           <EmptyState onNew={newNote} />

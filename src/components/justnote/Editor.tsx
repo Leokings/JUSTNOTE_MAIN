@@ -9,6 +9,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -16,13 +19,14 @@ type Props = {
   walletAddr: string | null;
   onChange: (patch: Partial<Note>) => void;
   onDelete: () => void;
-  onSaveOnChain?: () => void;
+  onSaveOnChain?: (expiryDays: number) => void;
 };
 
 type SaveState = "idle" | "saving" | "saved";
 
 export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain }: Props) => {
   const [save, setSave] = useState<SaveState>("saved");
+  const [expiryDays, setExpiryDays] = useState("30");
   const timer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const lastNoteId = useRef(note.id);
@@ -87,9 +91,22 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain }: 
         <div className="flex-1" />
         <span className="hidden sm:inline">Updated {relTime(note.updatedAt)}</span>
         {onSaveOnChain && (
-          <Button variant="outline" size="sm" onClick={onSaveOnChain} className="h-7 px-2 bg-gradient-brand text-white border-none shadow-glow">
-            Save On-Chain
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Select value={expiryDays} onValueChange={setExpiryDays}>
+              <SelectTrigger className="h-7 w-[100px] text-xs bg-background/50 border-border/60">
+                <SelectValue placeholder="Expiry" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 Day</SelectItem>
+                <SelectItem value="30">30 Days</SelectItem>
+                <SelectItem value="365">1 Year</SelectItem>
+                <SelectItem value="3650">10 Years</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={() => onSaveOnChain(Number(expiryDays))} className="h-7 px-2 bg-gradient-brand text-white border-none shadow-glow">
+              Save On-Chain
+            </Button>
+          </div>
         )}
         <Button variant="ghost" size="sm" onClick={onDelete} className="h-7 px-2 text-muted-foreground hover:text-destructive">
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
