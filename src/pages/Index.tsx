@@ -86,8 +86,8 @@ const JustNoteApp = () => {
           blobName: noteId
         });
         
-        if (blobData) {
-          let text = new TextDecoder().decode(blobData);
+        if (blobData && blobData.readable) {
+          let text = await new Response(blobData.readable).text();
           let isEncrypted = false;
           if (text.startsWith("[ENCRYPTED] ")) {
             // UTF-8 safe Base64 decode
