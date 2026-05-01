@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm cream canvas, espresso ink, vivid pink brand */
+    --background: 36 50% 97%;
+    --foreground: 28 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 28 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 28 30% 12%;
+
+    --primary: 326 85% 68%;
+    --primary-foreground: 28 35% 10%;
+    --primary-glow: 18 95% 70%;
+
+    --secondary: 30 35% 93%;
+    --secondary-foreground: 28 30% 18%;
+
+    --muted: 32 30% 94%;
+    --muted-foreground: 28 12% 42%;
+
+    --accent: 326 90% 94%;
+    --accent-foreground: 326 60% 32%;
+
+    --destructive: 8 80% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 22% 88%;
+    --input: 30 22% 88%;
+    --ring: 326 85% 68%;
+
+    --sidebar-bg: 32 40% 95%;
+    --editor-bg: 0 0% 100%;
+
+    --gradient-brand: linear-gradient(135deg, hsl(326 85% 68%), hsl(18 95% 70%));
+    --gradient-soft: linear-gradient(135deg, hsl(326 90% 94%), hsl(40 90% 94%));
+    --shadow-soft: 0 1px 2px hsl(28 30% 12% / 0.05), 0 4px 16px hsl(326 60% 50% / 0.08);
+    --shadow-glow: 0 8px 32px -8px hsl(326 85% 68% / 0.45);
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 32 40% 95%;
+    --sidebar-foreground: 28 30% 18%;
+    --sidebar-primary: 326 85% 68%;
+    --sidebar-primary-foreground: 28 35% 10%;
+    --sidebar-accent: 30 35% 91%;
+    --sidebar-accent-foreground: 28 30% 18%;
+    --sidebar-border: 30 22% 88%;
+    --sidebar-ring: 326 85% 68%;
+  }
+
+  .dark {
+    /* Espresso night with pink neon brand */
+    --background: 28 25% 8%;
+    --foreground: 36 40% 95%;
+
+    --card: 28 22% 11%;
+    --card-foreground: 36 40% 95%;
+
+    --popover: 28 22% 11%;
+    --popover-foreground: 36 40% 95%;
+
+    --primary: 326 90% 72%;
+    --primary-foreground: 28 35% 10%;
+    --primary-glow: 18 95% 70%;
+
+    --secondary: 28 18% 15%;
+    --secondary-foreground: 36 40% 95%;
+
+    --muted: 28 18% 15%;
+    --muted-foreground: 32 15% 65%;
+
+    --accent: 326 40% 24%;
+    --accent-foreground: 326 90% 92%;
+
+    --destructive: 8 75% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 28 15% 20%;
+    --input: 28 15% 20%;
+    --ring: 326 90% 72%;
+
+    --sidebar-bg: 28 22% 10%;
+    --editor-bg: 28 22% 11%;
+
+    --gradient-brand: linear-gradient(135deg, hsl(326 90% 72%), hsl(18 95% 70%));
+    --gradient-soft: linear-gradient(135deg, hsl(326 40% 24%), hsl(18 40% 24%));
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.4), 0 4px 16px hsl(326 80% 30% / 0.25);
+    --shadow-glow: 0 8px 32px -8px hsl(326 90% 72% / 0.5);
+
+    --sidebar-background: 28 22% 10%;
+    --sidebar-foreground: 36 35% 90%;
+    --sidebar-primary: 326 90% 72%;
+    --sidebar-primary-foreground: 28 35% 10%;
+    --sidebar-accent: 28 18% 15%;
+    --sidebar-accent-foreground: 36 40% 95%;
+    --sidebar-border: 28 15% 20%;
+    --sidebar-ring: 326 90% 72%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+@layer utilities {
+  .bg-gradient-brand { background-image: var(--gradient-brand); }
+  .bg-gradient-soft { background-image: var(--gradient-soft); }
+  .text-gradient-brand {
+    background-image: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+}
+
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}
