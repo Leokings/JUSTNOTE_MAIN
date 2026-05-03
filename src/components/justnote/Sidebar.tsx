@@ -43,7 +43,7 @@ export const Sidebar = ({
       </div>
 
       <ScrollArea className="flex-1 scrollbar-thin">
-        <div className="px-3">
+        <div className="pl-3 pr-5">
           {/* Folders */}
           <div className="pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <FolderClosed className="h-3 w-3" /> Folders
