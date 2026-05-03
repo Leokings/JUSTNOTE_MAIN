@@ -42,53 +42,54 @@ export const Sidebar = ({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 px-2 scrollbar-thin">
-        {/* Folders */}
-        <div className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <FolderClosed className="h-3 w-3" /> Folders
-        </div>
-        <div className="mb-3 space-y-0.5">
-          <FolderItem label="All notes" active={selectedFolder === null && selectedTag === null} count={notes.length} onClick={() => { onSelectFolder(null); onSelectTag(null); }} />
-          {FOLDERS.map((f) => (
-            <FolderItem
-              key={f}
-              label={f}
-              active={selectedFolder === f}
-              count={notes.filter((n) => n.folder === f).length}
-              onClick={() => { onSelectFolder(selectedFolder === f ? null : f); onSelectTag(null); }}
-            />
-          ))}
-        </div>
+      <ScrollArea className="flex-1 scrollbar-thin">
+        <div className="px-3">
+          {/* Folders */}
+          <div className="pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <FolderClosed className="h-3 w-3" /> Folders
+          </div>
+          <div className="mb-3 space-y-0.5">
+            <FolderItem label="All notes" active={selectedFolder === null && selectedTag === null} count={notes.length} onClick={() => { onSelectFolder(null); onSelectTag(null); }} />
+            {FOLDERS.map((f) => (
+              <FolderItem
+                key={f}
+                label={f}
+                active={selectedFolder === f}
+                count={notes.filter((n) => n.folder === f).length}
+                onClick={() => { onSelectFolder(selectedFolder === f ? null : f); onSelectTag(null); }}
+              />
+            ))}
+          </div>
 
-        {/* Tags */}
-        <div className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <Tag className="h-3 w-3" /> Tags
-        </div>
-        <div className="px-2 mb-3 flex flex-wrap gap-1.5">
-          {ALL_TAGS.map((t) => {
-            const active = selectedTag === t;
-            return (
-              <button
-                key={t}
-                onClick={() => { onSelectTag(active ? null : t); onSelectFolder(null); }}
-                className={cn(
-                  "text-[11px] px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1",
-                  active
-                    ? "bg-gradient-brand text-white border-transparent shadow-soft"
-                    : "bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-                )}
-              >
-                <Hash className="h-2.5 w-2.5" />{t}
-              </button>
-            );
-          })}
-        </div>
+          {/* Tags */}
+          <div className="pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Tag className="h-3 w-3" /> Tags
+          </div>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {ALL_TAGS.map((t) => {
+              const active = selectedTag === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => { onSelectTag(active ? null : t); onSelectFolder(null); }}
+                  className={cn(
+                    "text-[11px] px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1",
+                    active
+                      ? "bg-gradient-brand text-white border-transparent shadow-soft"
+                      : "bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+                  )}
+                >
+                  <Hash className="h-2.5 w-2.5" />{t}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Notes list */}
-        <div className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Notes
-        </div>
-        <div className="space-y-1 pb-4">
+          {/* Notes list */}
+          <div className="pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Notes
+          </div>
+          <div className="space-y-1 pb-4">
           {notes.length === 0 && (
             <div className="text-xs text-muted-foreground px-3 py-6 text-center">No notes match.</div>
           )}
@@ -118,6 +119,7 @@ export const Sidebar = ({
               </button>
             );
           })}
+          </div>
         </div>
       </ScrollArea>
     </aside>
