@@ -14,14 +14,15 @@ type Props = {
   onNew: () => void;
   onSelectFolder: (f: string | null) => void;
   onSelectTag: (t: string | null) => void;
+  className?: string;
 };
 
 export const Sidebar = ({
   notes, activeId, selectedFolder, selectedTag,
-  onSelect, onNew, onSelectFolder, onSelectTag,
+  onSelect, onNew, onSelectFolder, onSelectTag, className
 }: Props) => {
   return (
-    <aside className="w-72 shrink-0 border-r border-border bg-[hsl(var(--sidebar-bg))] flex flex-col h-full">
+    <aside className={cn("shrink-0 border-r border-border bg-[hsl(var(--sidebar-bg))] flex flex-col h-full", className)}>
       {/* Logo */}
       <div className="px-5 pt-5 pb-3 flex items-center gap-2">
         <img

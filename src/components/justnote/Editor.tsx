@@ -72,7 +72,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain }: 
   return (
     <div className="flex-1 flex flex-col h-full bg-[hsl(var(--editor-bg))] min-w-0">
       {/* Status bar */}
-      <div className="h-11 shrink-0 px-6 flex items-center gap-3 border-b border-border/60 text-xs text-muted-foreground">
+      <div className="h-11 shrink-0 px-4 md:px-6 flex items-center gap-3 border-b border-border/60 text-xs text-muted-foreground overflow-x-auto scrollbar-none whitespace-nowrap">
         <Badge>
           <Cloud className="h-3 w-3" />
           {save === "saving" ? "Saving to Shelby…" : save === "saved" ? "Saved to Shelby" : "Idle"}
@@ -215,7 +215,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain }: 
 };
 
 const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary text-foreground/70 text-[11px] font-medium">
+  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary text-foreground/70 text-[11px] font-medium whitespace-nowrap shrink-0">
     {children}
   </span>
 );

@@ -8,6 +8,7 @@ import { Note, uid } from "@/lib/mockData";
 import { toast } from "sonner";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { getShelbyClient, aptosClient } from "@/lib/shelby";
+import { cn } from "@/lib/utils";
 
 const JustNoteApp = () => {
   // Start with local cache to persist across disconnects/refreshes
@@ -261,9 +262,12 @@ const JustNoteApp = () => {
     setActiveId(null);
   };
 
+  const isMobileEditorOpen = activeId !== null;
+
   return (
     <div className="h-screen w-full flex bg-background text-foreground overflow-hidden">
       <Sidebar
+        className={cn(isMobileEditorOpen ? "hidden md:flex md:w-72" : "w-full md:w-72")}
         notes={filtered}
         activeId={activeId}
         selectedFolder={selectedFolder}
@@ -274,13 +278,14 @@ const JustNoteApp = () => {
         onSelectTag={setSelectedTag}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn("flex-1 flex flex-col min-w-0", !isMobileEditorOpen ? "hidden md:flex" : "flex")}>
         <Topbar
           query={query}
           onQuery={setQuery}
           walletAddr={walletAddr}
           onConnectWallet={handleConnectWallet}
           onOpenSettings={() => setSettingsOpen(true)}
+          onBack={isMobileEditorOpen ? () => setActiveId(null) : undefined}
         />
 
         {active ? (

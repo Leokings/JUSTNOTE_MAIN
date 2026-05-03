@@ -1,4 +1,4 @@
-import { Search, Wallet, Settings, Check } from "lucide-react";
+import { Search, Wallet, Settings, ChevronLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "./ThemeToggle";
@@ -11,12 +11,18 @@ type Props = {
   walletAddr: string | null;
   onConnectWallet: () => void;
   onOpenSettings: () => void;
+  onBack?: () => void;
 };
 
-export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSettings }: Props) => {
+export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSettings, onBack }: Props) => {
   const connected = !!walletAddr;
   return (
     <header className="h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur-md flex items-center gap-3 px-4 sticky top-0 z-20">
+      {onBack && (
+        <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden h-9 w-9 shrink-0">
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+      )}
       <div className="relative flex-1 max-w-xl">
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -34,7 +40,7 @@ export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSett
         onClick={onConnectWallet}
         variant={connected ? "outline" : "default"}
         className={cn(
-          "h-9 rounded-lg gap-2",
+          "h-9 rounded-lg gap-2 whitespace-nowrap shrink-0",
           connected
             ? "border-primary/30 bg-accent text-accent-foreground hover:bg-accent/80"
             : "bg-gradient-brand text-white border-0 hover:opacity-90 shadow-soft"
