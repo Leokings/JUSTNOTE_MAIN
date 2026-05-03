@@ -42,8 +42,8 @@ export const Sidebar = ({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 scrollbar-thin">
-        <div className="pl-3 pr-5">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="px-3 pb-4">
           {/* Folders */}
           <div className="pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <FolderClosed className="h-3 w-3" /> Folders
@@ -121,7 +121,7 @@ export const Sidebar = ({
           })}
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </aside>
   );
 };

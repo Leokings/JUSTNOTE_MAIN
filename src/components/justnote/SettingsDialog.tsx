@@ -28,12 +28,12 @@ export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, w
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg sm:w-full rounded-xl">
-        <DialogHeader>
+        <DialogHeader className="min-w-0">
           <DialogTitle className="font-display text-2xl">Settings</DialogTitle>
-          <DialogDescription>Manage how your notes are stored and secured.</DialogDescription>
+          <DialogDescription className="truncate sm:whitespace-normal">Manage how your notes are stored and secured.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 mt-2">
+        <div className="space-y-3 mt-2 min-w-0">
           {/* Encryption */}
           <Row icon={<Lock className="h-4 w-4" />} title="End-to-end encryption" subtitle="Encrypt notes locally before they reach Shelby.">
             <Switch checked={encryption} onCheckedChange={onEncryption} />
