@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/justnote/Sidebar";
 import { Topbar } from "@/components/justnote/Topbar";
-import { Editor } from "@/components/justnote/Editor";
+import { Editor, pendingMediaCache } from "@/components/justnote/Editor";
 import { SettingsDialog } from "@/components/justnote/SettingsDialog";
 import { ThemeProvider } from "@/components/justnote/ThemeProvider";
 import { Note, uid } from "@/lib/mockData";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { getShelbyClient, aptosClient } from "@/lib/shelby";
 import { cn } from "@/lib/utils";
+import { AES_PREFIX, AES_PREFIX_BYTES, deriveMasterKey, encryptData, decryptData } from "@/lib/encryption";
 
 const JustNoteApp = () => {
   // Start with local cache to persist across disconnects/refreshes
@@ -40,9 +41,32 @@ const JustNoteApp = () => {
   const [encryption, setEncryption] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [aesKey, setAesKey] = useState<CryptoKey | null>(null);
 
-  const { account, connected, connect, disconnect, signAndSubmitTransaction } = useWallet();
+  const { account, connected, connect, disconnect, signAndSubmitTransaction, signMessage } = useWallet();
   const walletAddr = connected && account?.address ? String(account.address) : null;
+
+  const requireEncryptionKey = async (): Promise<CryptoKey> => {
+    if (aesKey) return aesKey;
+    if (!walletAddr || !signMessage) throw new Error("Wallet not connected");
+
+    toast.loading("Please sign the message to unlock your encryption key...", { id: "crypto" });
+    try {
+      const response = await signMessage({
+        message: "JustNote Master Encryption Key Generator. Sign this to securely derive your AES-256 decryption key.",
+        nonce: "justnote-v1",
+      });
+      
+      const sigStr = typeof response.signature === 'string' ? response.signature : Array.from(response.signature || []).map(b => b.toString(16).padStart(2, '0')).join('');
+      const key = await deriveMasterKey(sigStr);
+      setAesKey(key);
+      toast.success("Encryption Key Unlocked!", { id: "crypto" });
+      return key;
+    } catch (err: any) {
+      toast.error("Signature rejected. Cannot unlock notes.", { id: "crypto" });
+      throw err;
+    }
+  };
 
   // When wallet connects, try to fetch on-chain notes (non-blocking)
   useEffect(() => {
@@ -103,14 +127,25 @@ const JustNoteApp = () => {
         });
         
         if (blobData && blobData.readable) {
-          let text = await new Response(blobData.readable).text();
+          let bytes = new Uint8Array(await new Response(blobData.readable).arrayBuffer());
+          let text = "";
           let isEncrypted = false;
-          if (text.startsWith("[ENCRYPTED] ")) {
-            // UTF-8 safe Base64 decode
-            const binStr = atob(text.replace("[ENCRYPTED] ", ""));
-            const bytes = Uint8Array.from(binStr, (c) => c.codePointAt(0)!);
-            text = new TextDecoder().decode(bytes);
-            isEncrypted = true;
+
+          const headerStr = new TextDecoder().decode(bytes.slice(0, AES_PREFIX_BYTES.length));
+          if (headerStr === AES_PREFIX) {
+             const key = await requireEncryptionKey();
+             const plaintextBytes = await decryptData(bytes.slice(AES_PREFIX_BYTES.length), key);
+             text = new TextDecoder().decode(plaintextBytes);
+             isEncrypted = true;
+          } else {
+             text = new TextDecoder().decode(bytes);
+             // Backwards compatibility for Base64 encrypted notes
+             if (text.startsWith("[ENCRYPTED] ")) {
+                const binStr = atob(text.replace("[ENCRYPTED] ", ""));
+                const decBytes = Uint8Array.from(binStr, (c) => c.codePointAt(0)!);
+                text = new TextDecoder().decode(decBytes);
+                isEncrypted = true;
+             }
           }
           setNotes((s) =>
             s.map((n) =>
@@ -181,15 +216,42 @@ const JustNoteApp = () => {
     setSaving(true);
     toast.loading("Saving to Shelby…", { id: "saving" });
     try {
-      let contentToSave = n.content;
-      if (n.encrypted) {
-        // UTF-8 safe Base64 encode
-        const bytes = new TextEncoder().encode(n.content);
-        const binStr = Array.from(bytes, (b) => String.fromCodePoint(b)).join("");
-        contentToSave = "[ENCRYPTED] " + btoa(binStr);
+      let finalContent = n.content;
+      console.log("Saving finalContent:", finalContent);
+      console.log("Pending Cache Keys:", Array.from(pendingMediaCache.keys()));
+
+      // --- BATCH MEDIA UPLOAD ---
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(finalContent, "text/html");
+      const localMediaElements = doc.querySelectorAll('img[src^="blob:"], video[src^="blob:"], audio[src^="blob:"]');
+
+      for (let i = 0; i < localMediaElements.length; i++) {
+        const el = localMediaElements[i];
+        const srcUrl = el.getAttribute("src");
+        if (srcUrl && pendingMediaCache.has(srcUrl)) {
+          const file = pendingMediaCache.get(srcUrl)!;
+          try {
+            const mediaId = await uploadMediaOnChain(file, n.encrypted);
+            el.setAttribute("data-shelby-media", mediaId);
+            pendingMediaCache.delete(srcUrl);
+          } catch (uploadErr) {
+            console.error("Failed to upload a media file, skipping it:", uploadErr);
+            throw new Error("A media file failed to upload. Check your wallet balance or try again.");
+          }
+        }
       }
 
-      const dataBytes = new TextEncoder().encode(contentToSave);
+      // Re-serialize the HTML after modifications
+      finalContent = doc.body.innerHTML;
+
+      let dataBytes = new TextEncoder().encode(finalContent);
+      if (n.encrypted) {
+        const key = await requireEncryptionKey();
+        const ciphertext = await encryptData(dataBytes, key);
+        dataBytes = new Uint8Array(AES_PREFIX_BYTES.length + ciphertext.length);
+        dataBytes.set(AES_PREFIX_BYTES, 0);
+        dataBytes.set(ciphertext, AES_PREFIX_BYTES.length);
+      }
 
       // Dynamic import to avoid blocking app load
       const sdk = await import("@shelby-protocol/sdk/browser");
@@ -219,13 +281,103 @@ const JustNoteApp = () => {
       });
 
       toast.success("Note saved to Shelby!", { id: "saving" });
-      updateActive({ updatedAt: Date.now() });
+      updateActive({ content: finalContent, updatedAt: Date.now() });
     } catch (err: any) {
       console.error("Save failed:", err);
       toast.error(`Save failed: ${err.message || "Unknown error"}`, { id: "saving" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const uploadMediaOnChain = async (file: File, isEncrypted: boolean): Promise<string> => {
+    if (!walletAddr || !signAndSubmitTransaction) {
+      throw new Error("Connect wallet first!");
+    }
+    const mediaId = `${activeId}_media_${Date.now()}`;
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          toast.loading("Uploading media to Shelby…", { id: "media-upload" });
+          const dataUrl = reader.result as string;
+          let dataBytes = new TextEncoder().encode(dataUrl);
+          
+          if (isEncrypted) {
+            const key = await requireEncryptionKey();
+            const ciphertext = await encryptData(dataBytes, key);
+            dataBytes = new Uint8Array(AES_PREFIX_BYTES.length + ciphertext.length);
+            dataBytes.set(AES_PREFIX_BYTES, 0);
+            dataBytes.set(ciphertext, AES_PREFIX_BYTES.length);
+          }
+          
+          const sdk = await import("@shelby-protocol/sdk/browser");
+          const provider = await sdk.createDefaultErasureCodingProvider();
+          const commitments = await sdk.generateCommitments(provider, dataBytes);
+
+          const expirationMicros = BigInt(Date.now() + 30 * 24 * 3600 * 1000) * 1000n;
+
+          const payload = sdk.ShelbyBlobClient.createRegisterBlobPayload({
+            account: walletAddr,
+            blobName: mediaId,
+            blobMerkleRoot: commitments.blob_merkle_root,
+            numChunksets: sdk.expectedTotalChunksets(commitments.raw_data_size).toString(),
+            expirationMicros: expirationMicros.toString(),
+            blobSize: commitments.raw_data_size.toString(),
+            encoding: (provider as any).config.enumIndex,
+          });
+
+          const result = await signAndSubmitTransaction({ data: payload });
+          await aptosClient.waitForTransaction({ transactionHash: result.hash });
+
+          const shelbyClient = await getShelbyClient();
+          await shelbyClient.rpc.putBlob({
+            account: walletAddr,
+            blobName: mediaId,
+            blobData: dataBytes,
+          });
+
+          toast.success("Media uploaded to Shelby!", { id: "media-upload" });
+          resolve(mediaId);
+        } catch (err: any) {
+          console.error("Media upload failed:", err);
+          toast.error(`Upload failed: ${err.message || "Unknown error"}`, { id: "media-upload" });
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error("File read failed"));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const hydrateMedia = async (mediaId: string): Promise<string> => {
+    if (!walletAddr) throw new Error("No wallet");
+    const shelbyClient = await getShelbyClient();
+    const blobData = await shelbyClient.rpc.getBlob({
+      account: walletAddr,
+      blobName: mediaId
+    });
+    if (!blobData || !blobData.readable) throw new Error("No data readable");
+    
+    let bytes = new Uint8Array(await new Response(blobData.readable).arrayBuffer());
+    let text = "";
+    
+    const headerStr = new TextDecoder().decode(bytes.slice(0, AES_PREFIX_BYTES.length));
+    if (headerStr === AES_PREFIX) {
+      const key = await requireEncryptionKey();
+      const plaintextBytes = await decryptData(bytes.slice(AES_PREFIX_BYTES.length), key);
+      text = new TextDecoder().decode(plaintextBytes);
+    } else {
+      text = new TextDecoder().decode(bytes);
+      if (text.startsWith("[ENCRYPTED] ")) {
+        text = atob(text.replace("[ENCRYPTED] ", ""));
+      }
+    }
+    
+    const res = await fetch(text);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
   };
 
   const newNote = () => {
@@ -248,13 +400,52 @@ const JustNoteApp = () => {
     setNotes((s) => s.map((n) => (n.id === active.id ? { ...n, ...patch, updatedAt: Date.now() } : n)));
   };
 
-  const deleteActive = () => {
+  const deleteActive = async (localOnly: boolean = false) => {
     if (!active) return;
-    const id = active.id;
-    setNotes((s) => s.filter((n) => n.id !== id));
-    const remaining = notes.filter((n) => n.id !== id);
+    const n = active;
+
+    if (walletAddr && signAndSubmitTransaction && !localOnly) {
+      try {
+        toast.loading("Deleting from Shelby...", { id: "deleting" });
+        const sdk = await import("@shelby-protocol/sdk/browser");
+        
+        // Scan for media blobs
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(n.content, "text/html");
+        const mediaElements = doc.querySelectorAll("[data-shelby-media]");
+        
+        for (let i = 0; i < mediaElements.length; i++) {
+          const mediaId = mediaElements[i].getAttribute("data-shelby-media");
+          if (mediaId) {
+            const payload = sdk.ShelbyBlobClient.createDeleteBlobPayload({
+              account: walletAddr,
+              blobName: mediaId,
+            });
+            const result = await signAndSubmitTransaction({ data: payload });
+            await aptosClient.waitForTransaction({ transactionHash: result.hash });
+          }
+        }
+
+        // Delete text blob
+        const textPayload = sdk.ShelbyBlobClient.createDeleteBlobPayload({
+          account: walletAddr,
+          blobName: n.id,
+        });
+        const result = await signAndSubmitTransaction({ data: textPayload });
+        await aptosClient.waitForTransaction({ transactionHash: result.hash });
+
+        toast.success("Permanently deleted from Shelby!", { id: "deleting" });
+      } catch (err: any) {
+        console.error("Delete failed", err);
+        toast.error("Failed to delete from Shelby: " + (err.message || "Unknown error"), { id: "deleting" });
+        return; // Halt local deletion so they don't lose the local copy if on-chain delete fails
+      }
+    }
+
+    setNotes((s) => s.filter((note) => note.id !== n.id));
+    const remaining = notes.filter((note) => note.id !== n.id);
     setActiveId(remaining[0]?.id ?? null);
-    toast("Note deleted", { description: "Removed from local state" });
+    if (!walletAddr) toast("Note removed from local state");
   };
 
   const clearMockData = () => {
@@ -296,6 +487,8 @@ const JustNoteApp = () => {
             onChange={updateActive}
             onDelete={deleteActive}
             onSaveOnChain={walletAddr ? (days) => saveNoteOnChain(active, days) : undefined}
+            onUploadMedia={uploadMediaOnChain}
+            onHydrateMedia={hydrateMedia}
           />
         ) : (
           <EmptyState onNew={newNote} />
