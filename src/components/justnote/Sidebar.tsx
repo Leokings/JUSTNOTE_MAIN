@@ -1,6 +1,5 @@
 import { Note, FOLDERS, ALL_TAGS, previewOf, relTime } from "@/lib/notes";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, FolderClosed, Tag, Lock, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo.png";
@@ -114,7 +113,7 @@ export const Sidebar = ({
                   {previewOf(n.content) || "Empty note"}
                 </div>
                 <div className="text-[10px] text-muted-foreground/70 mt-1 uppercase tracking-wide">
-                  {relTime(n.updatedAt)} · {n.folder}
+                  {relTime(n.updatedAt)} - {n.folder}
                 </div>
               </button>
             );

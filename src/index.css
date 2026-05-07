@@ -109,6 +109,7 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
     font-feature-settings: "cv11", "ss01";
+    overscroll-behavior: none;
   }
 }
 
@@ -232,10 +233,12 @@
   margin: 2.25rem 0;
   cursor: grab;
   transition: box-shadow 150ms ease, transform 150ms ease;
+  touch-action: manipulation;
 }
 
 .justnote-media-block:hover,
-.justnote-media-block:focus-visible {
+.justnote-media-block:focus-visible,
+.justnote-media-block.is-selected {
   box-shadow: 0 0 0 2px hsl(var(--ring) / 0.28);
 }
 
@@ -251,6 +254,8 @@
   width: 100%;
   height: auto;
   border-radius: 8px;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .justnote-media-block audio {
@@ -266,9 +271,102 @@
   line-height: 1.5;
   text-align: center;
   outline: none;
+  user-select: text;
 }
 
 .justnote-media-block figcaption:empty::before {
   content: attr(data-placeholder);
   color: hsl(var(--muted-foreground) / 0.65);
+}
+
+.justnote-media-actionbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  z-index: 40;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--popover) / 0.96);
+  box-shadow: var(--shadow-soft);
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px);
+}
+
+.justnote-media-actionbar button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 6px;
+  color: hsl(var(--foreground));
+  transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
+}
+
+.justnote-media-actionbar button:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.justnote-media-actionbar button:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .justnote-media-actionbar button {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .justnote-format-bar {
+    width: 100%;
+  }
+
+  .justnote-editor-content {
+    min-height: 360px;
+    font-size: 1rem;
+    line-height: 1.72;
+  }
+
+  .justnote-editor-content h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+
+  .justnote-editor-content h2 {
+    font-size: 1.35rem;
+    line-height: 1.28;
+  }
+
+  .justnote-editor-content blockquote {
+    padding-left: 1rem;
+    font-size: 1.06rem;
+  }
+
+  .justnote-divider {
+    width: 54%;
+    margin: 2rem auto;
+  }
+
+  .justnote-media-block {
+    margin: 1.75rem 0;
+    cursor: default;
+  }
+
+  .justnote-media-block:active {
+    transform: none;
+  }
+
+  .justnote-media-actionbar {
+    right: 0.75rem;
+    left: 0.75rem;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+    justify-content: center;
+    transform: none;
+  }
 }

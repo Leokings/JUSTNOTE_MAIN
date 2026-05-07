@@ -11,7 +11,7 @@ import { getShelbyClient, aptosClient } from "@/lib/shelby";
 import { cn } from "@/lib/utils";
 import { AES_PREFIX, AES_PREFIX_BYTES, deriveMasterKey, encryptData, decryptData } from "@/lib/encryption";
 import { pendingMediaCache } from "@/lib/pendingMediaCache";
-import { createNotePackage, readNotePackage, type NotePackageAsset } from "@/lib/notePackage";
+import { createNotePackage, readNotePackage, type NotePackageAsset, type StoredNoteDocument } from "@/lib/notePackage";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import type { BlobMetadata } from "@shelby-protocol/sdk/browser";
 
@@ -22,6 +22,56 @@ type ShelbyBlobIndexMetadata = BlobMetadata & {
 
 const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : "Unknown error");
 const NOTE_ID_PATTERN = /^n_[a-z0-9]{8}$/;
+const NOTE_JSON_SCHEMA = "justnote.note.v2";
+const textDecoder = new TextDecoder();
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const parseJsonNotePayload = (raw: string): StoredNoteDocument | null => {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed) || parsed.schema !== NOTE_JSON_SCHEMA || typeof parsed.content !== "string") {
+      return null;
+    }
+
+    return {
+      title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title : "Untitled",
+      subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : "",
+      content: parsed.content,
+      tags: Array.isArray(parsed.tags) ? parsed.tags.filter((tag): tag is string => typeof tag === "string") : [],
+      folder: typeof parsed.folder === "string" && parsed.folder.trim() ? parsed.folder : "Personal",
+      updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : Date.now(),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const readStoredNotePayload = (bytes: Uint8Array): { note: StoredNoteDocument; needsUpgrade: boolean } | null => {
+  const packaged = readNotePackage(bytes);
+  if (packaged) return { note: packaged, needsUpgrade: false };
+
+  const raw = textDecoder.decode(bytes);
+  const jsonNote = parseJsonNotePayload(raw);
+  if (jsonNote) return { note: jsonNote, needsUpgrade: true };
+
+  if (!raw.trim()) return null;
+  return {
+    note: {
+      title: "Untitled",
+      subtitle: "",
+      content: raw,
+      tags: ["web3"],
+      folder: "Personal",
+      updatedAt: Date.now(),
+    },
+    needsUpgrade: true,
+  };
+};
+
+const decodeBase64Bytes = (value: string) =>
+  Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 
 const extensionFromMime = (mime: string, fallback = "bin") => {
   const normalized = mime.toLowerCase().split(";")[0];
@@ -168,18 +218,25 @@ const JustNoteApp = () => {
           let payloadBytes = bytes;
           let isEncrypted = false;
 
-          const headerStr = new TextDecoder().decode(bytes.slice(0, AES_PREFIX_BYTES.length));
+          const headerStr = textDecoder.decode(bytes.slice(0, AES_PREFIX_BYTES.length));
           if (headerStr === AES_PREFIX) {
             const key = await requireEncryptionKey();
             const plaintextBytes = await decryptData(bytes.slice(AES_PREFIX_BYTES.length), key);
             payloadBytes = plaintextBytes;
             isEncrypted = true;
+          } else {
+            const rawText = textDecoder.decode(bytes);
+            if (rawText.startsWith("[ENCRYPTED] ")) {
+              payloadBytes = decodeBase64Bytes(rawText.replace("[ENCRYPTED] ", ""));
+              isEncrypted = true;
+            }
           }
-          const storedNote = readNotePackage(payloadBytes);
-          if (!storedNote) {
-            toast.error("This note uses an older storage format. Re-save it to upgrade the bundle.");
+          const storedPayload = readStoredNotePayload(payloadBytes);
+          if (!storedPayload) {
+            toast.error("Could not decode this note content.");
             return;
           }
+          const { note: storedNote, needsUpgrade } = storedPayload;
 
           setNotes((s) =>
             s.map((n) => {
@@ -187,19 +244,23 @@ const JustNoteApp = () => {
 
               return {
                 ...n,
-                title: storedNote.title,
+                title: storedNote.title === "Untitled" && n.title !== "Loading..." ? n.title : storedNote.title,
                 subtitle: storedNote.subtitle,
                 content: storedNote.content,
-                tags: storedNote.tags,
-                folder: storedNote.folder,
+                tags: storedNote.tags.length > 0 ? storedNote.tags : n.tags,
+                folder: storedNote.folder || n.folder,
                 updatedAt: storedNote.updatedAt,
                 encrypted: isEncrypted,
               };
             })
           );
+          if (needsUpgrade) {
+            toast.info("Opened an older note format. Publish it again to convert it into a zip bundle.");
+          }
         }
       } catch (err) {
         console.warn("Failed to load note content:", err);
+        toast.error(`Failed to open note: ${getErrorMessage(err)}`);
       }
     },
     [requireEncryptionKey, walletAddr]
@@ -425,7 +486,7 @@ const JustNoteApp = () => {
   const isMobileEditorOpen = activeId !== null;
 
   return (
-    <div className="h-screen w-full flex bg-background text-foreground overflow-hidden">
+    <div className="h-[100dvh] w-full flex bg-background text-foreground overflow-hidden">
       <Sidebar
         className={cn(isMobileEditorOpen ? "hidden md:flex md:w-72" : "w-full md:w-72")}
         notes={filtered}

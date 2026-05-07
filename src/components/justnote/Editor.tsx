@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Bold, Italic, Underline, List, ListOrdered, Quote, Code,
   Link2, Heading1, Heading2, Trash2, Lock, ShieldCheck, Hash, Plus, ImagePlus,
-  FolderClosed, X, Minus,
+  FolderClosed, X, Minus, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -26,16 +26,30 @@ type Props = {
 };
 
 type SaveState = "idle" | "saving" | "saved";
+type MediaSelection = {
+  index: number;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+};
 
 export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, saving = false }: Props) => {
   const [save, setSave] = useState<SaveState>("saved");
   const [expiryDays, setExpiryDays] = useState("30");
+  const [mediaSelection, setMediaSelection] = useState<MediaSelection | null>(null);
   const timer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLTextAreaElement | null>(null);
   const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
   const draggedMediaRef = useRef<HTMLElement | null>(null);
   const lastNoteId = useRef(note.id);
+  const getSerializableEditorHtml = () => {
+    if (!contentRef.current) return "";
+    const clone = contentRef.current.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll<HTMLElement>(".justnote-media-block.is-selected").forEach((block) => {
+      block.classList.remove("is-selected");
+    });
+    return clone.innerHTML;
+  };
   const articleStats = useMemo(() => {
     const text = [note.title, note.subtitle, note.content.replace(/<[^>]*>/g, " ")]
       .join(" ")
@@ -56,8 +70,15 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
       contentRef.current.innerHTML = note.content;
       lastNoteId.current = note.id;
       setSave("saved");
+      setMediaSelection(null);
     }
-    if (contentRef.current && contentRef.current.innerHTML !== note.content && lastNoteId.current === note.id && document.activeElement !== contentRef.current) {
+    const editor = contentRef.current;
+    const activeElement = document.activeElement;
+    const editorFocused = Boolean(editor && activeElement && editor.contains(activeElement));
+    const editorHtml = getSerializableEditorHtml();
+    const fetchedIntoEmptyEditor = editorHtml.trim() === "" && note.content.trim() !== "";
+
+    if (editor && editorHtml !== note.content && lastNoteId.current === note.id && (!editorFocused || fetchedIntoEmptyEditor)) {
       contentRef.current.innerHTML = note.content;
     }
   }, [note.id, note.content]);
@@ -76,6 +97,12 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     timer.current = window.setTimeout(() => setSave("saved"), 700);
   };
 
+  const syncEditorContent = () => {
+    if (!contentRef.current) return;
+    onChange({ content: getSerializableEditorHtml() });
+    triggerSave();
+  };
+
   const resizeTextarea = (element: HTMLTextAreaElement | null) => {
     if (!element) return;
     element.style.height = "0px";
@@ -90,10 +117,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
   const exec = (cmd: string, value = "") => {
     document.execCommand(cmd, false, value);
     contentRef.current?.focus();
-    if (contentRef.current) {
-      onChange({ content: contentRef.current.innerHTML });
-    }
-    triggerSave();
+    syncEditorContent();
   };
 
   const createLink = () => {
@@ -119,6 +143,31 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const getMediaBlocks = () =>
+    Array.from(contentRef.current?.querySelectorAll<HTMLElement>(".justnote-media-block") || []);
+
+  const setSelectedMediaBlock = (block: HTMLElement | null) => {
+    const blocks = getMediaBlocks();
+    blocks.forEach((item) => item.classList.toggle("is-selected", item === block));
+
+    if (!block) {
+      setMediaSelection(null);
+      return;
+    }
+
+    const index = blocks.indexOf(block);
+    if (index < 0) {
+      setMediaSelection(null);
+      return;
+    }
+
+    setMediaSelection({
+      index,
+      canMoveUp: Boolean(block.previousElementSibling),
+      canMoveDown: Boolean(block.nextElementSibling),
+    });
+  };
+
   const moveCaretToStart = (element: HTMLElement) => {
     const selection = window.getSelection();
     if (!selection) return;
@@ -137,6 +186,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     editor.querySelectorAll<HTMLElement>(".justnote-media-block").forEach((block) => {
       block.draggable = true;
       block.tabIndex = 0;
+      block.setAttribute("aria-label", "Media block");
       block.querySelectorAll<HTMLElement>("img, video, audio").forEach((media) => {
         media.draggable = false;
       });
@@ -148,6 +198,20 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
 
   useEffect(() => {
     syncMediaBlocks();
+    setMediaSelection((current) => {
+      const blocks = getMediaBlocks();
+      blocks.forEach((block, index) => block.classList.toggle("is-selected", current?.index === index));
+      if (!current) return current;
+
+      const block = blocks[current.index];
+      if (!block) return null;
+
+      return {
+        index: current.index,
+        canMoveUp: Boolean(block.previousElementSibling),
+        canMoveDown: Boolean(block.nextElementSibling),
+      };
+    });
   }, [note.id, note.content]);
 
   const isSupportedMedia = (file: File) =>
@@ -206,8 +270,8 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     range.insertNode(fragment);
     moveCaretToStart(afterMedia);
 
-    onChange({ content: editor.innerHTML });
-    triggerSave();
+    syncEditorContent();
+    setSelectedMediaBlock(figure);
   };
 
   const insertDivider = () => {
@@ -238,8 +302,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     range.insertNode(fragment);
     moveCaretToStart(afterDivider);
 
-    onChange({ content: editor.innerHTML });
-    triggerSave();
+    syncEditorContent();
   };
 
   const attachMediaFile = (file: File) => {
@@ -253,6 +316,15 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     pendingMediaCache.set(localUrl, file);
     insertMediaBlock(file, localUrl);
     return true;
+  };
+
+  const ensureWritableAfterMedia = (block: HTMLElement) => {
+    const next = block.nextElementSibling;
+    if (next && !next.classList.contains("justnote-media-block")) return;
+
+    const paragraph = document.createElement("p");
+    paragraph.innerHTML = "<br>";
+    block.after(paragraph);
   };
 
   const getTopLevelEditorChild = (node: Node | null) => {
@@ -293,8 +365,38 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
       moveCaretToStart(paragraph);
     }
 
-    onChange({ content: editor.innerHTML });
-    triggerSave();
+    ensureWritableAfterMedia(dragged);
+    syncEditorContent();
+    setSelectedMediaBlock(dragged);
+  };
+
+  const moveSelectedMedia = (direction: "up" | "down") => {
+    const editor = contentRef.current;
+    if (!editor || !mediaSelection) return;
+
+    const block = getMediaBlocks()[mediaSelection.index];
+    if (!block) {
+      setSelectedMediaBlock(null);
+      return;
+    }
+
+    const sibling = direction === "up" ? block.previousElementSibling : block.nextElementSibling;
+    if (!sibling) {
+      setSelectedMediaBlock(block);
+      return;
+    }
+
+    if (direction === "up") {
+      editor.insertBefore(block, sibling);
+    } else {
+      sibling.after(block);
+    }
+
+    ensureWritableAfterMedia(block);
+    syncEditorContent();
+    setSelectedMediaBlock(block);
+    block.focus({ preventScroll: true });
+    block.scrollIntoView({ block: "nearest", behavior: "smooth" });
   };
 
   const setCaretFromPoint = (x: number, y: number) => {
@@ -344,8 +446,22 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     event.preventDefault();
     block.textContent = "";
     shortcut();
-    onChange({ content: contentRef.current?.innerHTML || "" });
-    triggerSave();
+    syncEditorContent();
+  };
+
+  const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (mediaSelection && event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      moveSelectedMedia(event.key === "ArrowUp" ? "up" : "down");
+      return;
+    }
+
+    handleMarkdownShortcut(event);
+  };
+
+  const handleEditorSelection = (target: EventTarget | null) => {
+    const block = target instanceof Element ? target.closest<HTMLElement>(".justnote-media-block") : null;
+    setSelectedMediaBlock(block && contentRef.current?.contains(block) ? block : null);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -372,7 +488,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[hsl(var(--editor-bg))] min-w-0">
-      <div className="h-12 shrink-0 px-4 md:px-6 flex items-center gap-3 border-b border-border/60 text-xs text-muted-foreground overflow-x-auto scrollbar-none whitespace-nowrap">
+      <div className="min-h-12 shrink-0 px-3 md:px-6 py-2 flex items-center gap-3 border-b border-border/60 text-xs text-muted-foreground overflow-x-auto scrollbar-none whitespace-nowrap">
         <span className="inline-flex items-center gap-2">
           <span className={cn("h-2 w-2 rounded-full", save === "saving" || saving ? "bg-amber-500" : "bg-emerald-500")} />
           {saving ? "Syncing to Shelby" : save === "saving" ? "Saving" : "Saved"}
@@ -427,8 +543,8 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
         </DropdownMenu>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <article className="justnote-composer max-w-[760px] mx-auto px-6 md:px-12 py-10 md:py-14">
+      <div className="flex-1 overflow-y-auto scrollbar-thin pb-24 md:pb-0">
+        <article className="justnote-composer max-w-[760px] mx-auto px-4 sm:px-6 md:px-12 py-8 sm:py-10 md:py-14">
           <div className="mb-8 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -478,7 +594,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
             value={note.title}
             onChange={(e) => { onChange({ title: e.target.value }); resizeTextarea(e.target); triggerSave(); }}
             placeholder="Title"
-            className="justnote-title-input w-full resize-none overflow-hidden font-display text-5xl md:text-6xl font-semibold leading-[1.04] bg-transparent outline-none placeholder:text-muted-foreground/35"
+            className="justnote-title-input w-full resize-none overflow-hidden font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.04] bg-transparent outline-none placeholder:text-muted-foreground/35"
           />
           <textarea
             ref={subtitleRef}
@@ -486,7 +602,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
             value={note.subtitle || ""}
             onChange={(e) => { onChange({ subtitle: e.target.value }); resizeTextarea(e.target); triggerSave(); }}
             placeholder="Subtitle"
-            className="mt-5 w-full resize-none overflow-hidden bg-transparent text-xl md:text-2xl leading-relaxed text-muted-foreground outline-none placeholder:text-muted-foreground/40"
+            className="mt-5 w-full resize-none overflow-hidden bg-transparent text-lg sm:text-xl md:text-2xl leading-relaxed text-muted-foreground outline-none placeholder:text-muted-foreground/40"
           />
 
           {note.tags.length > 0 && (
@@ -525,7 +641,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept="image/*,video/mp4,audio/mp3,audio/mpeg"
+              accept="image/*,video/*,audio/*"
               onChange={handleFileSelect}
             />
             <ToolBtn label="Add media" onClick={() => fileInputRef.current?.click()}><ImagePlus className="h-4 w-4" /></ToolBtn>
@@ -536,8 +652,10 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
             contentEditable
             suppressContentEditableWarning
             data-placeholder="Tell your story..."
-            onInput={() => { onChange({ content: contentRef.current?.innerHTML || "" }); triggerSave(); }}
-            onKeyDown={handleMarkdownShortcut}
+            onInput={syncEditorContent}
+            onClick={(e) => handleEditorSelection(e.target)}
+            onFocusCapture={(e) => handleEditorSelection(e.target)}
+            onKeyDown={handleEditorKeyDown}
             onPaste={(e) => {
               e.preventDefault();
               if (e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -591,6 +709,37 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
           />
         </article>
       </div>
+
+      {mediaSelection && (
+        <div className="justnote-media-actionbar" role="toolbar" aria-label="Selected media controls">
+          <button
+            type="button"
+            onClick={() => moveSelectedMedia("up")}
+            disabled={!mediaSelection.canMoveUp}
+            aria-label="Move media up"
+            title="Move media up"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => moveSelectedMedia("down")}
+            disabled={!mediaSelection.canMoveDown}
+            aria-label="Move media down"
+            title="Move media down"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedMediaBlock(null)}
+            aria-label="Close media controls"
+            title="Close media controls"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -601,7 +750,7 @@ const ToolBtn = ({ children, label, onClick }: { children: React.ReactNode; labe
     onClick={onClick}
     aria-label={label}
     title={label}
-    className="h-8 w-8 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+    className="h-10 w-10 md:h-8 md:w-8 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
   >
     {children}
   </button>

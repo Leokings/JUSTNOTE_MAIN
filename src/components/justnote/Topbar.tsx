@@ -32,7 +32,7 @@ export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSett
   }, []);
 
   return (
-    <header className="h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur-md flex items-center gap-3 px-4 sticky top-0 z-20">
+    <header className="h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur-md flex items-center gap-2 sm:gap-3 px-2 sm:px-4 sticky top-0 z-20">
       {onBack && (
         <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden h-9 w-9 shrink-0">
           <ChevronLeft className="h-5 w-5" />
@@ -56,7 +56,7 @@ export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSett
         onClick={onConnectWallet}
         variant={connected ? "outline" : "default"}
         className={cn(
-          "h-9 rounded-lg gap-2 whitespace-nowrap shrink-0",
+          "h-9 rounded-lg gap-2 whitespace-nowrap shrink-0 px-2 sm:px-3",
           connected
             ? "border-primary/30 bg-accent text-accent-foreground hover:bg-accent/80"
             : "bg-gradient-brand text-white border-0 hover:opacity-90 shadow-soft"
@@ -65,13 +65,13 @@ export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSett
         {connected ? (
           <>
             <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_currentColor]" />
-            <span className="font-mono text-xs">{shortAddr(walletAddr!)}</span>
+            <span className="hidden sm:inline font-mono text-xs">{shortAddr(walletAddr!)}</span>
             <Check className="h-3.5 w-3.5" />
           </>
         ) : (
           <>
             <Wallet className="h-4 w-4" />
-            Connect Wallet
+            <span className="hidden sm:inline">Connect Wallet</span>
           </>
         )}
       </Button>
