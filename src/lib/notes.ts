@@ -1,6 +1,7 @@
 export type Note = {
   id: string;
   title: string;
+  subtitle?: string;
   content: string;
   tags: string[];
   folder: string;
@@ -11,18 +12,20 @@ export type Note = {
 export const FOLDERS = ["Personal", "Work", "Ideas", "Research"] as const;
 export const ALL_TAGS = ["web3", "draft", "important", "todo", "reading", "design"];
 
-const now = Date.now();
-const day = 86_400_000;
-
-
-
 export function uid() {
   return "n_" + Math.random().toString(36).slice(2, 10);
 }
 
 export function previewOf(content: string, max = 90) {
-  const flat = content.replace(/\s+/g, " ").trim();
-  return flat.length > max ? flat.slice(0, max) + "…" : flat;
+  const flat = content
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+  return flat.length > max ? `${flat.slice(0, max)}...` : flat;
 }
 
 export function relTime(ts: number) {
@@ -38,5 +41,5 @@ export function relTime(ts: number) {
 }
 
 export function shortAddr(addr: string) {
-  return addr.slice(0, 6) + "…" + addr.slice(-4);
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }

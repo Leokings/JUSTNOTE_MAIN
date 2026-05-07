@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Cloud, Lock, Wallet, ShieldCheck, HardDrive, Trash2 } from "lucide-react";
-import { shortAddr } from "@/lib/mockData";
+import { shortAddr } from "@/lib/notes";
 import { toast } from "sonner";
 
 type Props = {
@@ -14,20 +14,26 @@ type Props = {
   onConnect: () => void;
   onDisconnect: () => void;
   noteCount: number;
-  onClearMockData?: () => void;
+  onResetWorkspace?: () => void;
 };
 
-export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, walletAddr, onConnect, onDisconnect, noteCount, onClearMockData }: Props) => {
-  const handleClearMock = () => {
-    localStorage.removeItem("justnote:mockData");
+export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, walletAddr, onConnect, onDisconnect, noteCount, onResetWorkspace }: Props) => {
+  const handleClearCache = () => {
     localStorage.removeItem("justnote:notes");
-    onClearMockData?.();
-    toast.success("Mock data cleared");
+    localStorage.removeItem("justnote:activeId");
+    toast.success("Local cache cleared");
+  };
+
+  const handleResetWorkspace = () => {
+    localStorage.removeItem("justnote:notes");
+    localStorage.removeItem("justnote:activeId");
+    onResetWorkspace?.();
+    toast.success("Workspace reset");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg sm:w-full rounded-xl">
+      <DialogContent className="w-[95vw] max-w-lg sm:w-full rounded-lg">
         <DialogHeader className="min-w-0">
           <DialogTitle className="font-display text-2xl">Settings</DialogTitle>
           <DialogDescription className="truncate sm:whitespace-normal">Manage how your notes are stored and secured.</DialogDescription>
@@ -40,25 +46,24 @@ export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, w
           </Row>
 
           {/* Storage */}
-          <Row icon={<Cloud className="h-4 w-4" />} title="Storage" subtitle={`${noteCount} notes — Stored on Shelby`}>
+          <Row icon={<Cloud className="h-4 w-4" />} title="Storage" subtitle={`${noteCount} notes - Shelby-ready`}>
             <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online
             </span>
           </Row>
 
           <Row icon={<HardDrive className="h-4 w-4" />} title="Local cache" subtitle="Notes are mirrored in this browser for instant access.">
-            <Button variant="outline" size="sm" className="h-8">Clear</Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={handleClearCache}>Clear</Button>
           </Row>
 
-          {/* Clear Mock Data */}
-          <Row icon={<Trash2 className="h-4 w-4" />} title="Clear mock data" subtitle="Remove sample notes and start fresh.">
-            <Button variant="outline" size="sm" className="h-8 text-destructive hover:bg-destructive/10" onClick={handleClearMock}>
+          <Row icon={<Trash2 className="h-4 w-4" />} title="Reset workspace" subtitle="Remove local notes and start fresh.">
+            <Button variant="outline" size="sm" className="h-8 text-destructive hover:bg-destructive/10" onClick={handleResetWorkspace}>
               Clear
             </Button>
           </Row>
 
           {/* Wallet */}
-          <Row icon={<Wallet className="h-4 w-4" />} title="Wallet" subtitle={walletAddr ? `Connected — ${shortAddr(walletAddr)}` : "Not connected"}>
+          <Row icon={<Wallet className="h-4 w-4" />} title="Wallet" subtitle={walletAddr ? `Connected - ${shortAddr(walletAddr)}` : "Not connected"}>
             {walletAddr ? (
               <Button variant="outline" size="sm" className="h-8" onClick={onDisconnect}>Disconnect</Button>
             ) : (
@@ -71,7 +76,7 @@ export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, w
               <ShieldCheck className="h-4 w-4 text-primary mt-0.5" />
               <div className="text-xs text-foreground/80">
                 <div className="font-semibold text-foreground">You own your notes.</div>
-                Every note is signed by your wallet and content-addressed on Shelby. No one — not even us — can read or remove them.
+                Every encrypted note is signed by your wallet before it is stored on Shelby.
               </div>
             </div>
           )}

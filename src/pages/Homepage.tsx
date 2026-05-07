@@ -11,7 +11,7 @@ const HomepageInner = () => {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      await connect("Petra" as any);
+      await connect("Petra");
     } catch (err) {
       console.error("Wallet connect failed:", err);
     } finally {
@@ -21,13 +21,7 @@ const HomepageInner = () => {
 
   // If already connected, this component won't render (App.tsx handles routing)
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center bg-background text-foreground relative overflow-hidden">
-      {/* Ambient glow background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gradient-brand opacity-[0.07] blur-[120px]" />
-        <div className="absolute top-1/4 right-1/4 w-[300px] h-[300px] rounded-full bg-primary/5 blur-[80px]" />
-      </div>
-
+    <div className="h-screen w-full flex flex-col items-center justify-center bg-[linear-gradient(180deg,hsl(var(--background)),hsl(var(--secondary)))] text-foreground relative overflow-hidden px-6">
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Logo */}
@@ -36,13 +30,13 @@ const HomepageInner = () => {
           <img
             src={logoUrl}
             alt="JustNote logo"
-            className="relative h-28 w-28 rounded-2xl shadow-glow object-cover"
+            className="relative h-28 w-28 rounded-lg shadow-glow object-cover"
           />
         </div>
 
         {/* Title */}
         <div className="text-center space-y-3">
-          <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tight">
+          <h1 className="font-display text-5xl md:text-6xl font-bold">
             Just<span className="bg-gradient-brand bg-clip-text text-transparent">Note</span>
           </h1>
           <p className="text-muted-foreground text-lg md:text-xl max-w-md mx-auto leading-relaxed">
@@ -56,12 +50,12 @@ const HomepageInner = () => {
         <button
           onClick={handleConnect}
           disabled={connecting || connected}
-          className="mt-4 inline-flex items-center gap-3 bg-gradient-brand text-white text-base font-medium px-8 py-3.5 rounded-xl shadow-glow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="mt-4 inline-flex items-center gap-3 bg-gradient-brand text-white text-base font-medium px-8 py-3.5 rounded-lg shadow-glow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {connecting ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" />
-              Connecting…
+              Connecting...
             </>
           ) : (
             <>

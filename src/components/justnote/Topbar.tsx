@@ -2,8 +2,9 @@ import { Search, Wallet, Settings, ChevronLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "./ThemeToggle";
-import { shortAddr } from "@/lib/mockData";
+import { shortAddr } from "@/lib/notes";
 import { cn } from "@/lib/utils";
+import { useEffect, useRef } from "react";
 
 type Props = {
   query: string;
@@ -16,6 +17,20 @@ type Props = {
 
 export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSettings, onBack }: Props) => {
   const connected = !!walletAddr;
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <header className="h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur-md flex items-center gap-3 px-4 sticky top-0 z-20">
       {onBack && (
@@ -26,12 +41,13 @@ export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSett
       <div className="relative flex-1 max-w-xl">
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref={searchRef}
           value={query}
           onChange={(e) => onQuery(e.target.value)}
-          placeholder="Search notes, tags, content…"
+          placeholder="Search notes, tags, content..."
           className="pl-9 h-9 bg-secondary/60 border-transparent focus-visible:bg-card focus-visible:border-border rounded-lg"
         />
-        <kbd className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">⌘K</kbd>
+        <kbd className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">Ctrl K</kbd>
       </div>
 
       <div className="flex-1" />

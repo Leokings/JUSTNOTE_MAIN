@@ -4,103 +4,101 @@
 
 @layer base {
   :root {
-    /* Warm cream canvas, espresso ink, vivid pink brand */
-    --background: 36 50% 97%;
-    --foreground: 28 30% 12%;
+    --background: 210 24% 98%;
+    --foreground: 220 16% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 28 30% 12%;
+    --card-foreground: 220 16% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 28 30% 12%;
+    --popover-foreground: 220 16% 12%;
 
-    --primary: 326 85% 68%;
-    --primary-foreground: 28 35% 10%;
-    --primary-glow: 18 95% 70%;
+    --primary: 174 62% 36%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 12 86% 65%;
 
-    --secondary: 30 35% 93%;
-    --secondary-foreground: 28 30% 18%;
+    --secondary: 210 22% 94%;
+    --secondary-foreground: 220 16% 18%;
 
-    --muted: 32 30% 94%;
-    --muted-foreground: 28 12% 42%;
+    --muted: 210 22% 95%;
+    --muted-foreground: 220 10% 42%;
 
-    --accent: 326 90% 94%;
-    --accent-foreground: 326 60% 32%;
+    --accent: 174 42% 92%;
+    --accent-foreground: 174 58% 25%;
 
     --destructive: 8 80% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 22% 88%;
-    --input: 30 22% 88%;
-    --ring: 326 85% 68%;
+    --border: 210 18% 88%;
+    --input: 210 18% 88%;
+    --ring: 174 62% 36%;
 
-    --sidebar-bg: 32 40% 95%;
+    --sidebar-bg: 210 24% 96%;
     --editor-bg: 0 0% 100%;
 
-    --gradient-brand: linear-gradient(135deg, hsl(326 85% 68%), hsl(18 95% 70%));
-    --gradient-soft: linear-gradient(135deg, hsl(326 90% 94%), hsl(40 90% 94%));
-    --shadow-soft: 0 1px 2px hsl(28 30% 12% / 0.05), 0 4px 16px hsl(326 60% 50% / 0.08);
-    --shadow-glow: 0 8px 32px -8px hsl(326 85% 68% / 0.45);
+    --gradient-brand: linear-gradient(135deg, hsl(174 62% 36%), hsl(12 86% 65%));
+    --gradient-soft: linear-gradient(135deg, hsl(174 42% 92%), hsl(45 90% 92%));
+    --shadow-soft: 0 1px 2px hsl(220 16% 12% / 0.05), 0 8px 22px hsl(174 62% 25% / 0.08);
+    --shadow-glow: 0 8px 28px -10px hsl(174 62% 36% / 0.5);
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 32 40% 95%;
-    --sidebar-foreground: 28 30% 18%;
-    --sidebar-primary: 326 85% 68%;
-    --sidebar-primary-foreground: 28 35% 10%;
-    --sidebar-accent: 30 35% 91%;
-    --sidebar-accent-foreground: 28 30% 18%;
-    --sidebar-border: 30 22% 88%;
-    --sidebar-ring: 326 85% 68%;
+    --sidebar-background: 210 24% 96%;
+    --sidebar-foreground: 220 16% 18%;
+    --sidebar-primary: 174 62% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 22% 92%;
+    --sidebar-accent-foreground: 220 16% 18%;
+    --sidebar-border: 210 18% 88%;
+    --sidebar-ring: 174 62% 36%;
   }
 
   .dark {
-    /* Espresso night with pink neon brand */
-    --background: 28 25% 8%;
-    --foreground: 36 40% 95%;
+    --background: 240 7% 9%;
+    --foreground: 40 22% 94%;
 
-    --card: 28 22% 11%;
-    --card-foreground: 36 40% 95%;
+    --card: 240 6% 12%;
+    --card-foreground: 40 22% 94%;
 
-    --popover: 28 22% 11%;
-    --popover-foreground: 36 40% 95%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 40 22% 94%;
 
-    --primary: 326 90% 72%;
-    --primary-foreground: 28 35% 10%;
-    --primary-glow: 18 95% 70%;
+    --primary: 174 64% 46%;
+    --primary-foreground: 240 7% 9%;
+    --primary-glow: 12 86% 65%;
 
-    --secondary: 28 18% 15%;
-    --secondary-foreground: 36 40% 95%;
+    --secondary: 240 5% 16%;
+    --secondary-foreground: 40 22% 94%;
 
-    --muted: 28 18% 15%;
-    --muted-foreground: 32 15% 65%;
+    --muted: 240 5% 16%;
+    --muted-foreground: 40 12% 65%;
 
-    --accent: 326 40% 24%;
-    --accent-foreground: 326 90% 92%;
+    --accent: 174 44% 18%;
+    --accent-foreground: 174 80% 88%;
 
     --destructive: 8 75% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 28 15% 20%;
-    --input: 28 15% 20%;
-    --ring: 326 90% 72%;
+    --border: 240 5% 22%;
+    --input: 240 5% 22%;
+    --ring: 174 64% 46%;
 
-    --sidebar-bg: 28 22% 10%;
-    --editor-bg: 28 22% 11%;
+    --sidebar-bg: 240 6% 10%;
+    --editor-bg: 240 6% 12%;
 
-    --gradient-brand: linear-gradient(135deg, hsl(326 90% 72%), hsl(18 95% 70%));
-    --gradient-soft: linear-gradient(135deg, hsl(326 40% 24%), hsl(18 40% 24%));
-    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.4), 0 4px 16px hsl(326 80% 30% / 0.25);
-    --shadow-glow: 0 8px 32px -8px hsl(326 90% 72% / 0.5);
+    --gradient-brand: linear-gradient(135deg, hsl(174 64% 46%), hsl(12 86% 65%));
+    --gradient-soft: linear-gradient(135deg, hsl(174 44% 18%), hsl(45 45% 18%));
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.4), 0 8px 22px hsl(174 64% 18% / 0.25);
+    --shadow-glow: 0 8px 30px -10px hsl(174 64% 46% / 0.48);
 
-    --sidebar-background: 28 22% 10%;
-    --sidebar-foreground: 36 35% 90%;
-    --sidebar-primary: 326 90% 72%;
-    --sidebar-primary-foreground: 28 35% 10%;
-    --sidebar-accent: 28 18% 15%;
-    --sidebar-accent-foreground: 36 40% 95%;
-    --sidebar-border: 28 15% 20%;
-    --sidebar-ring: 326 90% 72%;
+    --sidebar-background: 240 6% 10%;
+    --sidebar-foreground: 40 22% 90%;
+    --sidebar-primary: 174 64% 46%;
+    --sidebar-primary-foreground: 240 7% 9%;
+    --sidebar-accent: 240 5% 16%;
+    --sidebar-accent-foreground: 40 22% 94%;
+    --sidebar-border: 240 5% 22%;
+    --sidebar-ring: 174 64% 46%;
   }
 }
 
@@ -128,11 +126,149 @@
   .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-  .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+.font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: 0; }
+}
+
+.justnote-composer {
+  color: hsl(var(--foreground));
+}
+
+.justnote-title-input {
+  overflow-wrap: anywhere;
+}
+
+.justnote-format-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.35rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  background: hsl(var(--editor-bg) / 0.94);
+  box-shadow: 0 10px 24px hsl(220 16% 12% / 0.07);
+  backdrop-filter: blur(14px);
+}
+
+.dark .justnote-format-bar {
+  box-shadow: 0 12px 26px hsl(0 0% 0% / 0.25);
 }
 
 [contenteditable][data-placeholder]:empty::before {
   content: attr(data-placeholder);
   color: hsl(var(--muted-foreground));
   pointer-events: none;
+}
+
+.justnote-editor-content {
+  font-size: 1.125rem;
+  line-height: 1.82;
+}
+
+.justnote-editor-content p {
+  margin: 1.15rem 0;
+}
+
+.justnote-editor-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.justnote-editor-content h1 {
+  margin: 2.35rem 0 0.9rem;
+  font-size: 2.15rem;
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+.justnote-editor-content h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.58rem;
+  line-height: 1.28;
+  font-weight: 650;
+}
+
+.justnote-editor-content blockquote {
+  margin: 2rem 0;
+  padding-left: 1.35rem;
+  border-left: 3px solid hsl(var(--primary));
+  color: hsl(var(--foreground));
+  font-size: 1.22rem;
+  line-height: 1.65;
+  font-style: italic;
+}
+
+.justnote-editor-content pre {
+  margin: 1.5rem 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: hsl(var(--secondary));
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.justnote-editor-content ul,
+.justnote-editor-content ol {
+  margin: 1.15rem 0;
+  padding-left: 1.65rem;
+}
+
+.justnote-editor-content li {
+  margin: 0.35rem 0;
+}
+
+.justnote-divider {
+  width: 42%;
+  margin: 2.4rem auto;
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.justnote-media-block {
+  position: relative;
+  margin: 2.25rem 0;
+  cursor: grab;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+
+.justnote-media-block:hover,
+.justnote-media-block:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.28);
+}
+
+.justnote-media-block:active {
+  cursor: grabbing;
+  transform: scale(0.997);
+}
+
+.justnote-media-block img,
+.justnote-media-block video {
+  display: block;
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.justnote-media-block audio {
+  display: block;
+  width: 100%;
+}
+
+.justnote-media-block figcaption {
+  margin-top: 0.75rem;
+  min-height: 1.25rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+  outline: none;
+}
+
+.justnote-media-block figcaption:empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground) / 0.65);
 }
