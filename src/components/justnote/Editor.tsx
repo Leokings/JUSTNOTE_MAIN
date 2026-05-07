@@ -42,6 +42,11 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
   const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
   const draggedMediaRef = useRef<HTMLElement | null>(null);
   const lastNoteId = useRef(note.id);
+  const isEditorEffectivelyEmpty = () => {
+    const editor = contentRef.current;
+    if (!editor) return true;
+    return !editor.textContent?.trim() && !editor.querySelector("img, video, audio, hr");
+  };
   const getSerializableEditorHtml = () => {
     if (!contentRef.current) return "";
     const clone = contentRef.current.cloneNode(true) as HTMLElement;
@@ -76,7 +81,7 @@ export const Editor = ({ note, walletAddr, onChange, onDelete, onSaveOnChain, sa
     const activeElement = document.activeElement;
     const editorFocused = Boolean(editor && activeElement && editor.contains(activeElement));
     const editorHtml = getSerializableEditorHtml();
-    const fetchedIntoEmptyEditor = editorHtml.trim() === "" && note.content.trim() !== "";
+    const fetchedIntoEmptyEditor = isEditorEffectivelyEmpty() && note.content.trim() !== "";
 
     if (editor && editorHtml !== note.content && lastNoteId.current === note.id && (!editorFocused || fetchedIntoEmptyEditor)) {
       contentRef.current.innerHTML = note.content;

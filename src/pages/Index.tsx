@@ -62,7 +62,7 @@ const readStoredNotePayload = (bytes: Uint8Array): { note: StoredNoteDocument; n
       title: "Untitled",
       subtitle: "",
       content: raw,
-      tags: ["web3"],
+      tags: [],
       folder: "Personal",
       updatedAt: Date.now(),
     },
@@ -72,6 +72,9 @@ const readStoredNotePayload = (bytes: Uint8Array): { note: StoredNoteDocument; n
 
 const decodeBase64Bytes = (value: string) =>
   Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+
+const hasPackageAssetReferences = (content: string) => content.includes("data-justnote-asset");
+const hasObjectUrlReferences = (content: string) => content.includes('src="blob:') || content.includes("src='blob:");
 
 const extensionFromMime = (mime: string, fallback = "bin") => {
   const normalized = mime.toLowerCase().split(";")[0];
@@ -102,7 +105,14 @@ const JustNoteApp = () => {
       if (saved) {
         const parsed = JSON.parse(saved) as Note[];
         // Filter out any blobs that were saved to cache before we added the filter
-        return Array.isArray(parsed) ? parsed.filter((n) => !n.id.startsWith("@")) : [];
+        return Array.isArray(parsed)
+          ? parsed
+              .filter((n) => !n.id.startsWith("@"))
+              .map((n) => ({
+                ...n,
+                remote: n.remote || n.tags.includes("web3") || hasPackageAssetReferences(n.content),
+              }))
+          : [];
       }
     } catch (err) {
       console.warn("Could not read cached notes:", err);
@@ -180,16 +190,29 @@ const JustNoteApp = () => {
               title: "Loading...",
               subtitle: "",
               content: "",
-              tags: ["web3"],
+              tags: [],
               folder: "Personal",
               updatedAt: b.creationMicros ? Number(b.creationMicros) / 1000 : (b.uploadTimestamp ? Number(b.uploadTimestamp) * 1000 : Date.now()),
               encrypted: false,
+              remote: true,
             });
           });
           setNotes((prev) => {
-            const existingIds = new Set(prev.map((n) => n.id));
-            const newOnes = onChainNotes.filter((n) => !existingIds.has(n.id));
-            return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
+            const byId = new Map(prev.map((note) => [note.id, note]));
+            onChainNotes.forEach((remoteNote) => {
+              const existing = byId.get(remoteNote.id);
+              byId.set(
+                remoteNote.id,
+                existing
+                  ? {
+                      ...existing,
+                      remote: true,
+                      updatedAt: Math.max(existing.updatedAt, remoteNote.updatedAt),
+                    }
+                  : remoteNote
+              );
+            });
+            return Array.from(byId.values());
           });
           toast.success(`Loaded ${onChainNotes.length} notes from Shelby`);
         }
@@ -251,6 +274,7 @@ const JustNoteApp = () => {
                 folder: storedNote.folder || n.folder,
                 updatedAt: storedNote.updatedAt,
                 encrypted: isEncrypted,
+                remote: true,
               };
             })
           );
@@ -269,8 +293,14 @@ const JustNoteApp = () => {
   useEffect(() => {
     if (!activeId || !walletAddr) return;
     const activeNote = notes.find((n) => n.id === activeId);
-    // Fetch Shelby notes when content is missing or bundled asset URLs need to be regenerated.
-    if (activeNote && activeNote.tags.includes("web3") && (!activeNote.content || activeNote.content.includes("data-justnote-asset"))) {
+    const hasPackageAssets = Boolean(activeNote && hasPackageAssetReferences(activeNote.content));
+    const isShelbyNote = Boolean(activeNote?.remote || activeNote?.tags.includes("web3") || hasPackageAssets);
+    const needsShelbyRefresh = Boolean(
+      activeNote && (!activeNote.content || hasPackageAssets || (isShelbyNote && hasObjectUrlReferences(activeNote.content)))
+    );
+
+    // Fetch Shelby notes when content is missing or bundled media URLs need to be regenerated.
+    if (activeNote && isShelbyNote && needsShelbyRefresh) {
       loadNoteContent(activeId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,7 +449,7 @@ const JustNoteApp = () => {
       });
 
       toast.success("Note saved to Shelby!", { id: "saving" });
-      setNotes((s) => s.map((note) => (note.id === n.id ? { ...note, content: previewContent, updatedAt: savedAt } : note)));
+      setNotes((s) => s.map((note) => (note.id === n.id ? { ...note, content: previewContent, updatedAt: savedAt, remote: true } : note)));
     } catch (err) {
       console.error("Save failed:", err);
       toast.error(`Save failed: ${getErrorMessage(err)}`, { id: "saving" });

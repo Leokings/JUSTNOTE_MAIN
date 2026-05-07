@@ -7,6 +7,7 @@ export type Note = {
   folder: string;
   updatedAt: number;
   encrypted: boolean;
+  remote?: boolean;
 };
 
 export const FOLDERS = ["Personal", "Work", "Ideas", "Research"] as const;
