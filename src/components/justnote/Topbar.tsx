@@ -1,21 +1,23 @@
-import { Search, Wallet, Settings, ChevronLeft, Check } from "lucide-react";
+import { Search, Wallet, Settings, ChevronLeft, Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./ThemeToggle";
 import { shortAddr } from "@/lib/notes";
-import { cn } from "@/lib/utils";
+import type { WalletOption } from "@/lib/walletOptions";
 import { useEffect, useRef } from "react";
 
 type Props = {
   query: string;
   onQuery: (s: string) => void;
   walletAddr: string | null;
-  onConnectWallet: () => void;
+  wallets: WalletOption[];
+  onConnectWallet: (walletName?: string) => void;
   onOpenSettings: () => void;
   onBack?: () => void;
 };
 
-export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSettings, onBack }: Props) => {
+export const Topbar = ({ query, onQuery, walletAddr, wallets, onConnectWallet, onOpenSettings, onBack }: Props) => {
   const connected = !!walletAddr;
   const searchRef = useRef<HTMLInputElement | null>(null);
 
@@ -52,29 +54,40 @@ export const Topbar = ({ query, onQuery, walletAddr, onConnectWallet, onOpenSett
 
       <div className="flex-1" />
 
-      <Button
-        onClick={onConnectWallet}
-        variant={connected ? "outline" : "default"}
-        className={cn(
-          "h-9 rounded-lg gap-2 whitespace-nowrap shrink-0 px-2 sm:px-3",
-          connected
-            ? "border-primary/30 bg-accent text-accent-foreground hover:bg-accent/80"
-            : "bg-gradient-brand text-white border-0 hover:opacity-90 shadow-soft"
-        )}
-      >
-        {connected ? (
-          <>
-            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_currentColor]" />
-            <span className="hidden sm:inline font-mono text-xs">{shortAddr(walletAddr!)}</span>
-            <Check className="h-3.5 w-3.5" />
-          </>
-        ) : (
-          <>
-            <Wallet className="h-4 w-4" />
-            <span className="hidden sm:inline">Connect Wallet</span>
-          </>
-        )}
-      </Button>
+      {connected ? (
+        <Button
+          onClick={() => onConnectWallet()}
+          variant="outline"
+          className="h-9 rounded-lg gap-2 whitespace-nowrap shrink-0 px-2 sm:px-3 border-primary/30 bg-accent text-accent-foreground hover:bg-accent/80"
+        >
+          <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_currentColor]" />
+          <span className="hidden sm:inline font-mono text-xs">{shortAddr(walletAddr!)}</span>
+          <Check className="h-3.5 w-3.5" />
+        </Button>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="h-9 rounded-lg gap-2 whitespace-nowrap shrink-0 px-2 sm:px-3 bg-gradient-brand text-white border-0 hover:opacity-90 shadow-soft">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">Connect Wallet</span>
+              <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Choose wallet</DropdownMenuLabel>
+            {wallets.length > 0 ? (
+              wallets.map((wallet) => (
+                <DropdownMenuItem key={wallet.name} onClick={() => onConnectWallet(wallet.name)} className="gap-2">
+                  {wallet.icon ? <img src={wallet.icon} alt="" className="h-4 w-4 rounded-sm" /> : <Wallet className="h-4 w-4" />}
+                  <span>{wallet.name}</span>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled>No wallets found</DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <ThemeToggle />
 

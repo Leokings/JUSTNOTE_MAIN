@@ -1,8 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Cloud, Lock, Wallet, ShieldCheck, HardDrive, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown, Cloud, Globe2, Lock, Wallet, ShieldCheck, HardDrive, Trash2 } from "lucide-react";
 import { shortAddr } from "@/lib/notes";
+import type { AppNetworkConfig, AppNetworkId } from "@/lib/appNetwork";
+import type { WalletOption } from "@/lib/walletOptions";
 import { toast } from "sonner";
 
 type Props = {
@@ -11,22 +15,39 @@ type Props = {
   encryption: boolean;
   onEncryption: (b: boolean) => void;
   walletAddr: string | null;
-  onConnect: () => void;
+  wallets: WalletOption[];
+  onConnect: (walletName?: string) => void;
   onDisconnect: () => void;
   noteCount: number;
+  networkId: AppNetworkId;
+  networkOptions: readonly AppNetworkConfig[];
+  onNetworkChange: (networkId: AppNetworkId) => void;
+  onClearCache?: () => void;
   onResetWorkspace?: () => void;
 };
 
-export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, walletAddr, onConnect, onDisconnect, noteCount, onResetWorkspace }: Props) => {
+export const SettingsDialog = ({
+  open,
+  onOpenChange,
+  encryption,
+  onEncryption,
+  walletAddr,
+  wallets,
+  onConnect,
+  onDisconnect,
+  noteCount,
+  networkId,
+  networkOptions,
+  onNetworkChange,
+  onClearCache,
+  onResetWorkspace,
+}: Props) => {
   const handleClearCache = () => {
-    localStorage.removeItem("justnote:notes");
-    localStorage.removeItem("justnote:activeId");
+    onClearCache?.();
     toast.success("Local cache cleared");
   };
 
   const handleResetWorkspace = () => {
-    localStorage.removeItem("justnote:notes");
-    localStorage.removeItem("justnote:activeId");
     onResetWorkspace?.();
     toast.success("Workspace reset");
   };
@@ -52,6 +73,21 @@ export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, w
             </span>
           </Row>
 
+          <Row icon={<Globe2 className="h-4 w-4" />} title="Network" subtitle={networkOptions.find((network) => network.id === networkId)?.description ?? "Shelby network"}>
+            <Select value={networkId} onValueChange={(value) => onNetworkChange(value as AppNetworkId)}>
+              <SelectTrigger className="h-8 w-[136px] bg-background">
+                <SelectValue placeholder="Network" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {networkOptions.map((network) => (
+                  <SelectItem key={network.id} value={network.id}>
+                    {network.shortLabel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+
           <Row icon={<HardDrive className="h-4 w-4" />} title="Local cache" subtitle="Notes are mirrored in this browser for instant access.">
             <Button variant="outline" size="sm" className="h-8" onClick={handleClearCache}>Clear</Button>
           </Row>
@@ -67,7 +103,26 @@ export const SettingsDialog = ({ open, onOpenChange, encryption, onEncryption, w
             {walletAddr ? (
               <Button variant="outline" size="sm" className="h-8" onClick={onDisconnect}>Disconnect</Button>
             ) : (
-              <Button size="sm" className="h-8 bg-gradient-brand text-white border-0 hover:opacity-90" onClick={onConnect}>Connect</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-8 gap-1.5 bg-gradient-brand text-white border-0 hover:opacity-90">
+                    Connect
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {wallets.length > 0 ? (
+                    wallets.map((wallet) => (
+                      <DropdownMenuItem key={wallet.name} onClick={() => onConnect(wallet.name)} className="gap-2">
+                        {wallet.icon ? <img src={wallet.icon} alt="" className="h-4 w-4 rounded-sm" /> : <Wallet className="h-4 w-4" />}
+                        <span>{wallet.name}</span>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>No wallets found</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </Row>
 

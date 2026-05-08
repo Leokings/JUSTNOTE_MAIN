@@ -1,19 +1,24 @@
 import { useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { Wallet, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, Wallet } from "lucide-react";
 import logoUrl from "@/assets/logo.png";
 import { ThemeProvider } from "@/components/justnote/ThemeProvider";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { combineWalletOptions } from "@/lib/walletOptions";
+import { toast } from "sonner";
 
 const HomepageInner = () => {
-  const { connect, connected } = useWallet();
+  const { connect, connected, wallets, notDetectedWallets } = useWallet();
   const [connecting, setConnecting] = useState(false);
+  const walletOptions = combineWalletOptions(wallets, notDetectedWallets);
 
-  const handleConnect = async () => {
+  const handleConnect = async (walletName: string) => {
     setConnecting(true);
     try {
-      await connect("Petra");
+      await connect(walletName);
     } catch (err) {
       console.error("Wallet connect failed:", err);
+      toast.error(`Could not connect ${walletName}`);
     } finally {
       setConnecting(false);
     }
@@ -47,23 +52,40 @@ const HomepageInner = () => {
         </div>
 
         {/* Connect Wallet Button */}
-        <button
-          onClick={handleConnect}
-          disabled={connecting || connected}
-          className="mt-4 inline-flex items-center gap-3 bg-gradient-brand text-white text-base font-medium px-8 py-3.5 rounded-lg shadow-glow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          {connecting ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Connecting...
-            </>
-          ) : (
-            <>
-              <Wallet className="h-5 w-5" />
-              Connect Wallet
-            </>
-          )}
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              disabled={connecting || connected}
+              className="mt-4 inline-flex items-center gap-3 bg-gradient-brand text-white text-base font-medium px-8 py-3.5 rounded-lg shadow-glow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {connecting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Wallet className="h-5 w-5" />
+                  Connect Wallet
+                  <ChevronDown className="h-4 w-4 opacity-80" />
+                </>
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-60">
+            <DropdownMenuLabel>Choose wallet</DropdownMenuLabel>
+            {walletOptions.length > 0 ? (
+              walletOptions.map((wallet) => (
+                <DropdownMenuItem key={wallet.name} onClick={() => handleConnect(wallet.name)} className="gap-2">
+                  {wallet.icon ? <img src={wallet.icon} alt="" className="h-4 w-4 rounded-sm" /> : <Wallet className="h-4 w-4" />}
+                  <span>{wallet.name}</span>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled>No wallets found</DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Subtle footer */}
         <p className="text-[11px] text-muted-foreground/50 mt-6">

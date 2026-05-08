@@ -7,11 +7,13 @@ import { ThemeProvider } from "@/components/justnote/ThemeProvider";
 import { Note, uid } from "@/lib/notes";
 import { toast } from "sonner";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { getShelbyClient, aptosClient } from "@/lib/shelby";
+import { getShelbyClient, getAptosClient } from "@/lib/shelby";
 import { cn } from "@/lib/utils";
 import { AES_PREFIX, AES_PREFIX_BYTES, deriveMasterKey, encryptData, decryptData } from "@/lib/encryption";
 import { pendingMediaCache } from "@/lib/pendingMediaCache";
 import { createNotePackage, readNotePackage, type NotePackageAsset, type StoredNoteDocument } from "@/lib/notePackage";
+import { useAppNetwork, type AppNetworkId } from "@/lib/appNetwork";
+import { combineWalletOptions } from "@/lib/walletOptions";
 import { AccountAddress } from "@aptos-labs/ts-sdk";
 import type { BlobMetadata } from "@shelby-protocol/sdk/browser";
 
@@ -76,6 +78,46 @@ const decodeBase64Bytes = (value: string) =>
 const hasPackageAssetReferences = (content: string) => content.includes("data-justnote-asset");
 const hasObjectUrlReferences = (content: string) => content.includes('src="blob:') || content.includes("src='blob:");
 
+const legacyNotesCacheKey = "justnote:notes";
+const legacyActiveIdCacheKey = "justnote:activeId";
+const notesCacheKey = (networkId: AppNetworkId) => `justnote:${networkId}:notes`;
+const activeIdCacheKey = (networkId: AppNetworkId) => `justnote:${networkId}:activeId`;
+
+const hydrateCachedNote = (note: Note): Note => ({
+  ...note,
+  tags: note.tags ?? [],
+  remote: note.remote || (note.tags ?? []).includes("web3") || hasPackageAssetReferences(note.content ?? ""),
+});
+
+const readCachedNotes = (networkId: AppNetworkId): Note[] => {
+  try {
+    const saved = localStorage.getItem(notesCacheKey(networkId)) ||
+      (networkId === "shelbynet" ? localStorage.getItem(legacyNotesCacheKey) : null);
+    if (!saved) return [];
+
+    const parsed = JSON.parse(saved) as Note[];
+    return Array.isArray(parsed)
+      ? parsed.filter((note) => !note.id.startsWith("@")).map(hydrateCachedNote)
+      : [];
+  } catch (err) {
+    console.warn("Could not read cached notes:", err);
+    return [];
+  }
+};
+
+const readCachedActiveId = (networkId: AppNetworkId) =>
+  localStorage.getItem(activeIdCacheKey(networkId)) ||
+  (networkId === "shelbynet" ? localStorage.getItem(legacyActiveIdCacheKey) : null);
+
+const clearCachedWorkspace = (networkId: AppNetworkId) => {
+  localStorage.removeItem(notesCacheKey(networkId));
+  localStorage.removeItem(activeIdCacheKey(networkId));
+  if (networkId === "shelbynet") {
+    localStorage.removeItem(legacyNotesCacheKey);
+    localStorage.removeItem(legacyActiveIdCacheKey);
+  }
+};
+
 const extensionFromMime = (mime: string, fallback = "bin") => {
   const normalized = mime.toLowerCase().split(";")[0];
   const known: Record<string, string> = {
@@ -98,38 +140,11 @@ const extensionFromMime = (mime: string, fallback = "bin") => {
 const assetElementSelector = "img, video, audio";
 
 const JustNoteApp = () => {
-  // Start with local cache to persist across disconnects/refreshes
-  const [notes, setNotes] = useState<Note[]>(() => {
-    try {
-      const saved = localStorage.getItem("justnote:notes");
-      if (saved) {
-        const parsed = JSON.parse(saved) as Note[];
-        // Filter out any blobs that were saved to cache before we added the filter
-        return Array.isArray(parsed)
-          ? parsed
-              .filter((n) => !n.id.startsWith("@"))
-              .map((n) => ({
-                ...n,
-                remote: n.remote || n.tags.includes("web3") || hasPackageAssetReferences(n.content),
-              }))
-          : [];
-      }
-    } catch (err) {
-      console.warn("Could not read cached notes:", err);
-    }
-    return [];
-  });
-  const [activeId, setActiveId] = useState<string | null>(() => localStorage.getItem("justnote:activeId") || null);
-
-  // Sync state to local storage automatically
-  useEffect(() => {
-    localStorage.setItem("justnote:notes", JSON.stringify(notes));
-  }, [notes]);
-
-  useEffect(() => {
-    if (activeId) localStorage.setItem("justnote:activeId", activeId);
-    else localStorage.removeItem("justnote:activeId");
-  }, [activeId]);
+  const { networkId, networkOptions, setNetworkId } = useAppNetwork();
+  // Start with a network-scoped local cache to persist across disconnects/refreshes.
+  const [notes, setNotes] = useState<Note[]>(() => readCachedNotes(networkId));
+  const [activeId, setActiveId] = useState<string | null>(() => readCachedActiveId(networkId));
+  const [cacheNetworkId, setCacheNetworkId] = useState<AppNetworkId>(networkId);
   const [query, setQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -138,8 +153,30 @@ const JustNoteApp = () => {
   const [saving, setSaving] = useState(false);
   const [aesKey, setAesKey] = useState<CryptoKey | null>(null);
 
-  const { account, connected, connect, disconnect, signAndSubmitTransaction, signMessage } = useWallet();
+  const { account, connected, connect, disconnect, signAndSubmitTransaction, signMessage, wallets, notDetectedWallets } = useWallet();
   const walletAddr = connected && account?.address ? String(account.address) : null;
+  const walletOptions = useMemo(() => combineWalletOptions(wallets, notDetectedWallets), [wallets, notDetectedWallets]);
+
+  useEffect(() => {
+    setNotes(readCachedNotes(networkId));
+    setActiveId(readCachedActiveId(networkId));
+    setSelectedFolder(null);
+    setSelectedTag(null);
+    setAesKey(null);
+    setCacheNetworkId(networkId);
+  }, [networkId]);
+
+  // Sync state to network-scoped local storage automatically.
+  useEffect(() => {
+    if (cacheNetworkId !== networkId) return;
+    localStorage.setItem(notesCacheKey(networkId), JSON.stringify(notes));
+  }, [cacheNetworkId, networkId, notes]);
+
+  useEffect(() => {
+    if (cacheNetworkId !== networkId) return;
+    if (activeId) localStorage.setItem(activeIdCacheKey(networkId), activeId);
+    else localStorage.removeItem(activeIdCacheKey(networkId));
+  }, [activeId, cacheNetworkId, networkId]);
 
   const requireEncryptionKey = useCallback(async (): Promise<CryptoKey> => {
     if (aesKey) return aesKey;
@@ -170,7 +207,7 @@ const JustNoteApp = () => {
 
     const fetchNotes = async () => {
       try {
-        const shelbyClient = await getShelbyClient();
+        const shelbyClient = await getShelbyClient(networkId);
         const blobs = await shelbyClient.coordination.getAccountBlobs({ account: walletAddr });
         if (cancelled) return;
         if (blobs && blobs.length > 0) {
@@ -223,14 +260,14 @@ const JustNoteApp = () => {
     };
     fetchNotes();
     return () => { cancelled = true; };
-  }, [walletAddr]);
+  }, [networkId, walletAddr]);
 
   // Download note content when selected (lazy loading for on-chain notes)
   const loadNoteContent = useCallback(
     async (noteId: string) => {
       if (!walletAddr) return;
       try {
-        const shelbyClient = await getShelbyClient();
+        const shelbyClient = await getShelbyClient(networkId);
         const blobData = await shelbyClient.rpc.getBlob({
           account: walletAddr,
           blobName: noteId
@@ -287,7 +324,7 @@ const JustNoteApp = () => {
         toast.error(`Failed to open note: ${getErrorMessage(err)}`);
       }
     },
-    [requireEncryptionKey, walletAddr]
+    [networkId, requireEncryptionKey, walletAddr]
   );
 
   useEffect(() => {
@@ -325,18 +362,31 @@ const JustNoteApp = () => {
 
   const active = notes.find((n) => n.id === activeId) ?? null;
 
-  const handleConnectWallet = async () => {
+  const handleConnectWallet = async (walletName?: string) => {
     if (connected) {
       disconnect();
       toast("Wallet disconnected");
     } else {
+      const targetWallet = walletName || walletOptions[0]?.name;
+      if (!targetWallet) {
+        toast.error("No Aptos wallets were detected.");
+        return;
+      }
+
       try {
-        await connect("Petra");
+        await connect(targetWallet);
       } catch (err) {
         console.error("Wallet connect error:", err);
-        toast.error("Failed to connect wallet. Is Petra installed?");
+        toast.error(`Failed to connect ${targetWallet}`);
       }
     }
+  };
+
+  const handleNetworkChange = (nextNetworkId: AppNetworkId) => {
+    if (nextNetworkId === networkId) return;
+    if (connected) disconnect();
+    setNetworkId(nextNetworkId);
+    toast(`Switched to ${networkOptions.find((option) => option.id === nextNetworkId)?.label ?? "network"}`);
   };
 
   const bundleMediaAssets = async (doc: Document): Promise<NotePackageAsset[]> => {
@@ -439,9 +489,9 @@ const JustNoteApp = () => {
       });
 
       const result = await signAndSubmitTransaction({ data: payload });
-      await aptosClient.waitForTransaction({ transactionHash: result.hash });
+      await getAptosClient(networkId).waitForTransaction({ transactionHash: result.hash });
 
-      const shelbyClient = await getShelbyClient();
+      const shelbyClient = await getShelbyClient(networkId);
       await shelbyClient.rpc.putBlob({
         account: walletAddr,
         blobName: n.id,
@@ -492,7 +542,7 @@ const JustNoteApp = () => {
           blobName: n.id,
         });
         const result = await signAndSubmitTransaction({ data: textPayload });
-        await aptosClient.waitForTransaction({ transactionHash: result.hash });
+        await getAptosClient(networkId).waitForTransaction({ transactionHash: result.hash });
 
         toast.success("Permanently deleted from Shelby!", { id: "deleting" });
       } catch (err) {
@@ -509,6 +559,13 @@ const JustNoteApp = () => {
   };
 
   const resetWorkspace = () => {
+    clearCachedWorkspace(networkId);
+    setNotes([]);
+    setActiveId(null);
+  };
+
+  const clearLocalCache = () => {
+    clearCachedWorkspace(networkId);
     setNotes([]);
     setActiveId(null);
   };
@@ -534,6 +591,7 @@ const JustNoteApp = () => {
           query={query}
           onQuery={setQuery}
           walletAddr={walletAddr}
+          wallets={walletOptions}
           onConnectWallet={handleConnectWallet}
           onOpenSettings={() => setSettingsOpen(true)}
           onBack={isMobileEditorOpen ? () => setActiveId(null) : undefined}
@@ -560,9 +618,14 @@ const JustNoteApp = () => {
         encryption={encryption}
         onEncryption={setEncryption}
         walletAddr={walletAddr}
-        onConnect={() => connect("Petra")}
+        wallets={walletOptions}
+        onConnect={handleConnectWallet}
         onDisconnect={disconnect}
         noteCount={notes.length}
+        networkId={networkId}
+        networkOptions={networkOptions}
+        onNetworkChange={handleNetworkChange}
+        onClearCache={clearLocalCache}
         onResetWorkspace={resetWorkspace}
       />
     </div>
